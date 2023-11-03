@@ -5,7 +5,15 @@ import (
 	"strings"
 )
 
-const InputMap string = `################################
+// Co-ordinate system:
+//
+//	o-------> y
+//	|
+//	|
+//	v
+//	x
+
+const InputCave string = `################################
 ~                              #
 #         ####                 #
 ###       ####                ##
@@ -16,97 +24,62 @@ const InputMap string = `################################
 
 const InputUnits int = 100
 
-type WaterState int
+type Cave [][]rune
 
-const (
-	Flowing WaterState = iota
-	Falling
-	Filling
-)
-
-func transpose(m string) string {
-	lines := strings.Split(m, "\n")
-
-	mT := make([]string, len(lines[0]))
-
-	for _, line := range lines {
-		for i, c := range line {
-			mT[i] += string(c)
-		}
+func (c Cave) Print() {
+	for _, line := range c {
+		fmt.Println(string(line))
 	}
-	return strings.Join(mT, "\n")
 }
 
-// Capacity of a column = how many vertical stacks of water it can hold.
-func capacity(col string) int {
-	return len(col) - strings.Count(col, "#")
+func (c Cave) At(x, y int) rune {
+	return c[x][y]
+}
+func (c Cave) Above(x, y int) rune {
+	return c[x-1][y]
+}
+func (c Cave) Below(x, y int) rune {
+	return c[x+1][y]
+}
+func (c Cave) Left(x, y int) rune {
+	return c[x][y-1]
+}
+func (c Cave) Right(x, y int) rune {
+	return c[x][y+1]
 }
 
 func main() {
-	mT := transpose(InputMap)
-	cols := strings.Split(mT, "\n")
-	maxCapacity := len(cols[0]) - 2 // Less floor and ceiling.
+	lines := strings.Split(InputCave, "\n")
+	lines = lines[1:] // Discard ceiling.
 
-	capacities := make([]int, len(cols))
-	for i := range capacities {
-		capacities[i] = capacity(cols[i])
+	cave := make(Cave, len(lines))
+	for i, line := range lines {
+		cave[i] = []rune(line)
 	}
 
-	depths := make([]int, len(cols))
-	depths[0] = 1 // Start with a single water unit in col 0.
+	cave.Print()
 
-	// State variables.
-	col := 0
-	height := maxCapacity
-	state := Flowing
+	x := 0
+	y := 0
 
-	spacesBelow := func(c, h int) int {
-		nRocks := maxCapacity - capacities[c]
-
-		nBelow := (h - 1) - nRocks
-		return nBelow
-	}
-
-	for i := 1; i < InputUnits; i++ {
-		println(spacesBelow(col, height))
-
-		if state == Falling {
-			height--
+	for n := 1; n < InputUnits; n++ {
+		if cave.Below(x, y) == ' ' {
+			x++
 		} else {
-			col++
+			y++
+		}
 
-			if spacesBelow(col, height) < 0 {
-				// Hit a wall! Take a step back.
-				col--
-				// Return to the column water is falling from.
-				currentDepth := depths[col]
-				for depths[col] == currentDepth {
-					col--
-				}
-				// Water goes up a level and flows right.
-				height++
-				col++
-
-				state = Filling
+		if cave.At(x, y) == '#' {
+			for cave.Above(x, y) != '~' {
+				y--
 			}
+			x--
+			y++
 		}
 
-		// Place a water tile.
-		depths[col]++
+		cave[x][y] = '~'
 
-		// Determine state change.
-		nBelow := spacesBelow(col, height)
-
-		if nBelow == 0 {
-			state = Flowing
-		}
-		if state == Filling {
-			nBelow -= depths[col]
-		}
-		if nBelow > 0 {
-			state = Falling
-		}
-
-		fmt.Println(depths)
+		print("\n\n\n\n\n\n\n")
+		cave.Print()
 	}
 }
