@@ -16,6 +16,14 @@ const InputMap string = `################################
 
 const InputUnits int = 100
 
+type WaterState int
+
+const (
+	Flowing WaterState = iota
+	Falling
+	Filling
+)
+
 func transpose(m string) string {
 	lines := strings.Split(m, "\n")
 
@@ -46,39 +54,59 @@ func main() {
 
 	depths := make([]int, len(cols))
 	depths[0] = 1 // Start with a single water unit in col 0.
-	// capacities[0] = 0
 
-	// Within a column, water will:
-	// 1. increase depth to deplete "fillable depth", where at any time,
-	//    a column's "fillable depth" = spaces between water height and rock height
-	//								  = (water height - 1) - rock height
-	// 								  = (`height` - 1) - (`maxCapacity` - `capacity`)
-	// 2. flow to the next column
-
+	// State variables.
 	col := 0
 	height := maxCapacity
-	isFalling := false
-	fillableDepth := func(c, h int) int { return (h - 1) - (maxCapacity - capacities[c]) }
+	state := Flowing
 
-	for i := 0; i < InputUnits; i++ {
-		println(fillableDepth(col, height))
-		if fillableDepth(col, height) > 0 {
-			// Same column, water falls down.
+	spacesBelow := func(c, h int) int {
+		nRocks := maxCapacity - capacities[c]
+
+		nBelow := (h - 1) - nRocks
+		return nBelow
+	}
+
+	for i := 1; i < InputUnits; i++ {
+		println(spacesBelow(col, height))
+
+		if state == Falling {
 			height--
-			fmt.Printf("Fall to height %v: ", height)
-			isFalling = true
 		} else {
-			// Column full, water flows right.
 			col++
-			fmt.Printf("Move right to col %v: ", col)
-			isFalling = false
+
+			if spacesBelow(col, height) < 0 {
+				// Hit a wall! Take a step back.
+				col--
+				// Return to the column water is falling from.
+				currentDepth := depths[col]
+				for depths[col] == currentDepth {
+					col--
+				}
+				// Water goes up a level and flows right.
+				height++
+				col++
+
+				state = Filling
+			}
 		}
 
+		// Place a water tile.
 		depths[col]++
 
-		fmt.Println(depths)
-		if isFalling {
-			println("~")
+		// Determine state change.
+		nBelow := spacesBelow(col, height)
+
+		if nBelow == 0 {
+			state = Flowing
 		}
+		if state == Filling {
+			nBelow -= depths[col]
+		}
+		if nBelow > 0 {
+			state = Falling
+		}
+
+		fmt.Println(depths)
 	}
 }
